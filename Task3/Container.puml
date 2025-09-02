@@ -1,0 +1,89 @@
+plantuml
+@startuml Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Диаграмма контейнеров - Система открытия депозитов онлайн
+
+Person(new_customer, "Новый клиент")
+Person(existing_customer, "Существующий клиент")
+Person(call_center_manager, "Менеджер кол-центра")
+Person(back_office_manager, "Менеджер бэк-офиса")
+
+System_Boundary(website_boundary, "Сайт банка") {
+    Container(website_frontend, "Веб-интерфейс сайта", "PHP, React.js", "Отображение информации о депозитах и форма подачи заявки")
+    Container(website_backend, "Бэкенд сайта", "PHP", "Обработка заявок и интеграция с системами банка")
+}
+
+System_Boundary(internet_banking_boundary, "Интернет-банк") {
+    Container(ib_frontend, "Веб-интерфейс ИБ", "ASP.NET MVC 4.5", "Интерфейс для управления счетами и подачи заявок на депозиты")
+    Container(ib_backend, "Основное ядро ИБ", "ASP.NET, .NET Framework 4.5", "Бизнес-логика интернет-банка (монолит подрядчика)")
+    Container(deposit_service, "Сервис депозитов", ".NET Core, MS SQL", "Новый микросервис для обработки заявок на депозиты")
+    Container(rate_cache, "Кэш ставок", "Redis/In-Memory", "Кэширование актуальных ставок для быстрого доступа")
+    ContainerDb(ib_database, "База данных ИБ", "MS SQL", "Хранение данных клиентов и операций")
+}
+
+System_Boundary(abs_boundary, "АБС") {
+    Container(abs_desktop, "Десктопный клиент АБС", "Delphi", "Интерфейс для сотрудников банка")
+    Container(abs_core, "Ядро АБС", "PL/SQL процедуры", "Основная бизнес-логика банковских операций")
+    Container(rate_management, "Модуль управления ставками", "PL/SQL", "Новый модуль для расчета и хранения ставок по депозитам")
+    Container(deposit_processing, "Модуль обработки депозитов", "PL/SQL", "Обработка заявок на депозиты из онлайн-каналов")
+    ContainerDb(abs_database, "База данных АБС", "Oracle", "Основное хранилище банковских данных")
+}
+
+System_Boundary(call_center_boundary, "Система кол-центра") {
+    Container(cc_frontend, "Веб-интерфейс КЦ", "React.js", "Интерфейс для операторов кол-центра")
+    Container(cc_backend, "Бэкенд КЦ", "Java Spring Boot", "CRM-функциональность и обработка обращений")
+    Container(cc_integration, "Интеграционный сервис", "Java Spring Boot", "Синхронизация с АБС и обработка заявок с сайта")
+    ContainerDb(cc_database, "База данных КЦ", "PostgreSQL", "Хранение обращений и заявок клиентов")
+}
+
+System_Boundary(integration_boundary, "Интеграционный слой") {
+    Container(message_broker, "Брокер сообщений", "Apache Kafka", "Асинхронная передача заявок между системами")
+    Container(api_gateway, "API Gateway", ".NET Core", "Централизованное управление API и маршрутизация")
+}
+
+System_Ext(sms_gateway, "SMS-шлюз", "Отправка SMS-уведомлений")
+
+' Взаимодействие пользователей с интерфейсами
+Rel(new_customer, website_frontend, "Подача заявки", "HTTPS")
+Rel(existing_customer, ib_frontend, "Подача заявки", "HTTPS")
+Rel(call_center_manager, cc_frontend, "Обработка заявок")
+Rel(back_office_manager, abs_desktop, "Обработка депозитов")
+
+' Внутренние взаимодействия сайта
+Rel(website_frontend, website_backend, "Отправка заявки")
+Rel(website_backend, message_broker, "Публикация заявки", "Kafka")
+
+' Внутренние взаимодействия интернет-банка
+Rel(ib_frontend, ib_backend, "Запросы на операции")
+Rel(ib_frontend, deposit_service, "Заявки на депозиты", "REST API")
+Rel(ib_backend, ib_database, "Запись/чтение данных")
+Rel(deposit_service, ib_database, "Сохранение заявок")
+Rel(deposit_service, rate_cache, "Получение ставок")
+Rel(deposit_service, message_broker, "Публикация заявок", "Kafka")
+
+' Взаимодействие кол-центра
+Rel(cc_frontend, cc_backend, "Управление заявками")
+Rel(cc_backend, cc_database, "Хранение данных")
+Rel(cc_integration, message_broker, "Получение заявок с сайта", "Kafka")
+Rel(cc_integration, cc_database, "Создание заявок")
+
+' Взаимодействие с АБС
+Rel(abs_desktop, abs_core, "Операции с депозитами")
+Rel(abs_core, abs_database, "Запись/чтение")
+Rel(rate_management, abs_database, "Управление ставками")
+Rel(message_broker, deposit_processing, "Получение заявок из ИБ", "Kafka")
+Rel(deposit_processing, abs_database, "Обработка заявок")
+
+' Синхронизация ставок
+Rel(rate_management, api_gateway, "Публикация ставок", "REST API")
+Rel(api_gateway, rate_cache, "Обновление кэша ставок")
+
+' Уведомления
+Rel(abs_core, sms_gateway, "SMS-уведомления", "API")
+
+' Интеграции через API Gateway
+Rel(cc_integration, api_gateway, "Синхронизация с АБС")
+Rel(api_gateway, abs_core, "Запросы к АБС")
+
+@enduml

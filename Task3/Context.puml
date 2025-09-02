@@ -1,0 +1,33 @@
+plantuml
+@startuml Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Контекстная диаграмма - Система открытия депозитов онлайн
+
+Person(new_customer, "Новый клиент", "Потенциальный клиент банка")
+Person(existing_customer, "Существующий клиент", "Клиент с открытым счетом в банке")
+Person(call_center_manager, "Менеджер кол-центра", "Обрабатывает заявки и консультирует клиентов")
+Person(back_office_manager, "Менеджер бэк-офиса", "Обрабатывает заявки на депозиты")
+Person(credit_manager, "Менеджер кредитования", "Рассчитывает ставки депозитов")
+
+System(bank_website, "Сайт банка", "Позволяет новым клиентам подавать заявки на депозиты")
+System(internet_banking, "Интернет-банк", "Позволяет клиентам управлять счетами и подавать заявки на депозиты")
+System(abs_system, "АБС", "Автоматизированная банковская система - основная система учета")
+System(call_center_system, "Система кол-центра", "CRM-система для обработки обращений клиентов")
+
+System_Ext(sms_gateway, "SMS-шлюз", "Система отправки SMS-уведомлений")
+System_Ext(telecom_operator, "Телеком-оператор", "Провайдер SMS-услуг")
+
+Rel(new_customer, bank_website, "Подает заявку на депозит", "HTTPS")
+Rel(existing_customer, internet_banking, "Подает заявку на депозит", "HTTPS")
+Rel(call_center_manager, call_center_system, "Обрабатывает заявки с сайта")
+Rel(back_office_manager, abs_system, "Обрабатывает заявки на депозиты")
+Rel(credit_manager, abs_system, "Рассчитывает ставки")
+
+Rel(bank_website, call_center_system, "Передает заявки", "API")
+Rel(internet_banking, abs_system, "Передает заявки", "Database")
+Rel(call_center_system, abs_system, "Синхронизирует данные", "API")
+Rel(abs_system, sms_gateway, "Отправляет SMS", "API")
+Rel(sms_gateway, telecom_operator, "Доставка SMS")
+
+@enduml
