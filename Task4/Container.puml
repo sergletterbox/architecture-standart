@@ -1,0 +1,62 @@
+@startuml Container
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+title Диаграмма контейнеров - Система передачи депозитных ставок
+
+Person(credit_manager, "Менеджер кредитования")
+Person(call_center_operator, "Сотрудник кол-центра")
+Person(partner_operator, "Сотрудник партнерского кол-центра")
+
+System_Boundary(abs_boundary, "АБС") {
+    Container(abs_desktop, "Десктопный клиент АБС", "Delphi", "Интерфейс для управления ставками")
+    Container(rate_management, "Модуль управления ставками", "PL/SQL", "Расчет и хранение депозитных ставок")
+    Container(rate_distribution_service, "Сервис распространения ставок", "PL/SQL + Java", "Автоматическая передача ставок во внешние системы")
+    Container(file_generator, "Генератор файлов", "Java", "Создание файлов ставок для SFTP")
+    ContainerDb(abs_database, "База данных АБС", "Oracle", "Хранение ставок и конфигураций")
+}
+
+System_Boundary(integration_boundary, "Интеграционный слой") {
+    Container(api_gateway, "API Gateway", ".NET Core", "Маршрутизация API запросов")
+    Container(sftp_server, "SFTP-сервер", "Linux + OpenSSH", "Хранение и передача файлов ставок")
+}
+
+System_Boundary(call_center_boundary, "Система кол-центра") {
+    Container(cc_frontend, "Веб-интерфейс КЦ", "React.js", "Отображение ставок операторам")
+    Container(cc_backend, "Бэкенд КЦ", "Java Spring Boot", "Бизнес-логика и интеграции")
+    Container(rates_cache, "Кэш ставок", "Redis", "Быстрый доступ к актуальным ставкам")
+    ContainerDb(cc_database, "База данных КЦ", "PostgreSQL", "Хранение ставок и настроек")
+}
+
+System_Ext(partner_system, "Система партнерского кол-центра", "Внешняя система получения ставок через файлы")
+System_Ext(notification_service, "Сервис уведомлений", "Email/SMS уведомления")
+
+' Взаимодействие пользователей
+Rel(credit_manager, abs_desktop, "Обновляет ставки")
+Rel(call_center_operator, cc_frontend, "Просматривает ставки")
+Rel(partner_operator, partner_system, "Работает с ставками")
+
+' Внутренние взаимодействия АБС
+Rel(abs_desktop, rate_management, "Управление ставками")
+Rel(rate_management, abs_database, "Сохранение ставок")
+Rel(rate_management, rate_distribution_service, "Триггер распространения", "Event")
+Rel(rate_distribution_service, file_generator, "Генерация файлов")
+Rel(file_generator, sftp_server, "Размещение файлов", "SFTP")
+
+' API интеграция с кол-центром
+Rel(rate_distribution_service, api_gateway, "Передача ставок", "REST API")
+Rel(api_gateway, cc_backend, "Обновление ставок")
+Rel(cc_backend, rates_cache, "Кэширование ставок")
+Rel(cc_backend, cc_database, "Сохранение ставок")
+Rel(cc_frontend, cc_backend, "Получение ставок", "REST API")
+
+' Партнерская интеграция
+Rel(partner_system, sftp_server, "Скачивание файлов", "SFTP")
+
+' Уведомления и мониторинг
+Rel(rate_distribution_service, notification_service, "Уведомления об обновлениях")
+
+' Логирование и мониторинг
+Rel(api_gateway, abs_database, "Логирование операций")
+Rel(file_generator, abs_database, "Логирование генерации файлов")
+
+@enduml

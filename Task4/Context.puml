@@ -1,0 +1,29 @@
+@startuml Context
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+
+title Контекстная диаграмма - Система передачи депозитных ставок
+
+Person(credit_manager, "Менеджер кредитования", "Рассчитывает и обновляет депозитные ставки")
+Person(call_center_operator, "Сотрудник кол-центра", "Консультирует клиентов по депозитным ставкам")
+Person(partner_operator, "Сотрудник партнерского кол-центра", "Консультирует клиентов банка по ставкам")
+Person(client, "Клиент банка", "Звонит для получения информации о депозитах")
+
+System(abs_system, "АБС", "Система управления ставками и генерации данных для передачи")
+System(call_center_system, "Система кол-центра", "Отображает актуальные ставки операторам")
+System(sftp_server, "SFTP-сервер", "Хранилище файлов ставок для партнерского кол-центра")
+
+System_Ext(partner_call_center, "Партнерский кол-центр", "Внешняя система партнера")
+System_Ext(notification_system, "Система уведомлений", "Email/SMS уведомления об обновлениях")
+
+Rel(credit_manager, abs_system, "Обновляет ставки", "UI")
+Rel(call_center_operator, call_center_system, "Просматривает ставки", "Web UI")
+Rel(partner_operator, partner_call_center, "Работает с импортированными ставками", "UI")
+Rel(client, call_center_operator, "Звонит за консультацией", "Телефон")
+Rel(client, partner_operator, "Звонит за консультацией", "Телефон")
+
+Rel(abs_system, call_center_system, "Передает ставки", "REST API")
+Rel(abs_system, sftp_server, "Размещает файлы ставок", "SFTP")
+Rel(partner_call_center, sftp_server, "Скачивает файлы ставок", "SFTP")
+Rel(abs_system, notification_system, "Уведомления об обновлениях")
+
+@enduml
